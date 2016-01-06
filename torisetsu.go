@@ -38,7 +38,7 @@ func main() {
     writer.Write(readme_template)
     writer.Flush()
 
-    println("Complete write README.md!")
+    println("Complete add README.md!")
   }
   app.Run(os.Args)
 }
