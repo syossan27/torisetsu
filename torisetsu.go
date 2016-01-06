@@ -12,9 +12,9 @@ func main() {
   app.Usage = "Write README.md Template"
   app.Version = "1.0"
   app.Action = func(c *cli.Context) {
-    file, err := os.OpenFile("README.md", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+    file, err := os.OpenFile("README.md", os.O_WRONLY|os.O_APPEND, 0600)
     if err != nil {
-      println("Error")
+      println("Error: README.md is not exist.")
       os.Exit(0)
     }
     defer file.Close()
