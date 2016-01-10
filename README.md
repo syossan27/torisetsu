@@ -4,6 +4,11 @@ torisetsu - Add README.md Template.
 ## Requirement
 Golang
 
+## Install
+````
+$ go get github.com/syossan27/torisetsu
+````
+
 ## Usage
 After "create a new repository on the command line"
 
@@ -79,11 +84,6 @@ GLOBAL OPTIONS:
         unlicense : The Unlicense
    --help, -h   show help
    --version, -v  print the version
-````
-
-## Install
-````
-$ go get github.com/syossan27/torisetsu
 ````
 
 ## License
