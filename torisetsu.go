@@ -1,14 +1,26 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"github.com/codegangsta/cli"
-	"os"
-	"strings"
+  "os"
+  "fmt"
+  "bufio"
+  "errors"
+  "strings"
+  "github.com/codegangsta/cli"
 )
 
-func main() {
+const (
+  ExitCodeOK = iota
+  ExitCodeError
+  defaultLicense = "mit"
+)
+
+func makeApp() *cli.App {
+  app := cli.NewApp()
+  app.Name = "torisetsu"
+  app.Usage = "Write README.md Template"
+  app.Version = "1.1"
+
   choose_license := []string{
     "Choose License:",
     "  none\t: None",
@@ -29,75 +41,101 @@ func main() {
     "  unlicense\t: The Unlicense",
   }
 
-	app := cli.NewApp()
-	app.Name = "torisetsu"
-	app.Usage = "Write README.md Template"
-	app.Version = "1.1"
-	app.Flags = []cli.Flag {
-		cli.StringFlag {
-			Name:  "author, a",
-			Value: "",
-			Usage: "This flag specifies the author name to print.",
-		},
-		cli.StringFlag {
-			Name:  "license, l",
-			Value: "",
+  app.Flags = []cli.Flag {
+    cli.StringFlag {
+      Name:  "author, a",
+      Value: "",
+      Usage: "This flag specifies the author name to print.",
+    },
+    cli.StringFlag {
+      Name:  "license, l",
+      Value: defaultLicense,
       Usage: "This flag specifies the choose license to print.\n\t" + strings.Join(choose_license, "\n\t"),
-		},
-	}
-	app.Action = func(c *cli.Context) {
-		file, err := os.OpenFile("README.md", os.O_WRONLY|os.O_APPEND, 0600)
-		if err != nil {
-			println("Error: README.md is not exist.")
-			os.Exit(0)
-		}
-		defer file.Close()
+    },
+  }
 
-    license := c.String("license")
-    license_string := ""
-    switch license {
-      case "none": license_string = "None"
-      case "apache": license_string = "[Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)"
-      case "mit": license_string = "[MIT](http://opensource.org/licenses/mit-license.php)"
-      case "al": license_string = "[Artistic License 2.0](http://www.perlfoundation.org/artistic_license_2_0)"
-      case "bsd2": license_string = "[BSD 2-clause 'Simplified' License](https://opensource.org/licenses/BSD-2-Clause)"
-      case "bsd3": license_string = "[BSD 3-clause 'New' or 'Revised' License](https://opensource.org/licenses/BSD-3-Clause)"
-      case "cc0": license_string = "[Creative Commons Zero v1.0 Universal](http://creativecommons.org/publicdomain/zero/1.0/legalcode)"
-      case "epl": license_string = "[Eclipse Public License 1.0](http://www.eclipse.org/legal/epl-v10.html)"
-      case "agpl": license_string = "[GNU Affero General Public License v3.0](http://www.gnu.org/licenses/agpl-3.0.html)"
-      case "gpl2": license_string = "[GNU General Public License v2.0](http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt)"
-      case "gpl3": license_string = "[GNU General Public License v3.0](http://www.gnu.org/licenses/gpl-3.0.txt)"
-      case "lgpl2": license_string = "[GNU Lesser General Public License v2.1](http://www.gnu.org/licenses/lgpl-2.1.html)"
-      case "lgpl3": license_string = "[GNU Lesser General Public License v3.0](http://www.gnu.org/licenses/lgpl-3.0.html)"
-      case "iscl": license_string = "[ISC License](http://opensource.org/licenses/isc-license.txt)"
-      case "mpl": license_string = "[Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/)"
-      case "unlicense" : license_string = "[The Unlicense](http://unlicense.org/)"
-      default: license_string = "[MIT](http://opensource.org/licenses/mit-license.php)"
+  app.Action = func(c *cli.Context) {
+    // Flag license
+    license, err := flagLicense(c.String("license"))
+    if err != nil {
+      fmt.Println(err)
+      os.Exit(ExitCodeError)
     }
 
-		author := c.String("author")
+    // Flag author
+    author := flagAuthor(c.String("author"))
 
-		body := []string{
-			"Overview",
-			"## Description",
-			"## Demo",
-			"## VS.",
-			"## Requirement",
-			"## Usage",
-			"## Install",
-			"## Contribution",
-			"## License",
-      fmt.Sprintf(license_string),
-			"## Author",
-			fmt.Sprintf("[%s](https://github.com/%s)", author, author),
-		}
-		readme_template := []byte("\n" + strings.Join(body, "\n\n"))
+    readme_template := createReadTemplate(license, author)
 
-		writer := bufio.NewWriter(file)
-		writer.Write(readme_template)
-		writer.Flush()
+    file, err := os.OpenFile("README.md", os.O_WRONLY|os.O_APPEND, 0600)
+    if err != nil {
+      println("Error: README.md is not exist.")
+      os.Exit(ExitCodeError)
+    }
+    defer file.Close()
 
-		println("Complete add README.md!")
-	}
-	app.Run(os.Args)
+    writer := bufio.NewWriter(file)
+    writer.Write(readme_template)
+    writer.Flush()
+
+    println("Complete add README.md!")
+    os.Exit(ExitCodeOK)
+  }
+
+  return app
+}
+
+func flagLicense(license string) (string, error) {
+  license_list := map[string]string {
+    "none":       "None",
+    "apache":     "[Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)",
+    "mit":        "[MIT](http://opensource.org/licenses/mit-license.php)",
+    "al":         "[Artistic License 2.0](http://www.perlfoundation.org/artistic_license_2_0)",
+    "bsd2":       "[BSD 2-clause 'Simplified' License](https://opensource.org/licenses/BSD-2-Clause)",
+    "bsd3":       "[BSD 3-clause 'New' or 'Revised' License](https://opensource.org/licenses/BSD-3-Clause)",
+    "cc0":        "[Creative Commons Zero v1.0 Universal](http://creativecommons.org/publicdomain/zero/1.0/legalcode)",
+    "epl":        "[Eclipse Public License 1.0](http://www.eclipse.org/legal/epl-v10.html)",
+    "agpl":       "[GNU Affero General Public License v3.0](http://www.gnu.org/licenses/agpl-3.0.html)",
+    "gpl2":       "[GNU General Public License v2.0](http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt)",
+    "gpl3":       "[GNU General Public License v3.0](http://www.gnu.org/licenses/gpl-3.0.txt)",
+    "lgpl2":      "[GNU Lesser General Public License v2.1](http://www.gnu.org/licenses/lgpl-2.1.html)",
+    "lgpl3":      "[GNU Lesser General Public License v3.0](http://www.gnu.org/licenses/lgpl-3.0.html)",
+    "iscl":       "[ISC License](http://opensource.org/licenses/isc-license.txt)",
+    "mpl":        "[Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/)",
+    "unlicense" : "[The Unlicense](http://unlicense.org/)",
+  }
+
+  if license_string, ok := license_list[license]; ok {
+    return license_string, nil
+  } else {
+    return "", errors.New("The selected license can not be used.")
+  }
+}
+
+func flagAuthor(author string) string {
+  return fmt.Sprintf("[%s](https://github.com/%s)", author, author)
+}
+
+func createReadTemplate(license, author string) []byte {
+  body := []string{
+    "Overview",
+    "## Description",
+    "## Demo",
+    "## VS.",
+    "## Requirement",
+    "## Usage",
+    "## Install",
+    "## Contribution",
+    "## License",
+    fmt.Sprintf(license),
+    "## Author",
+    fmt.Sprintf(author),
+  }
+
+  return []byte("\n" + strings.Join(body, "\n\n"))
+}
+
+func main() {
+  app := makeApp()
+  app.Run(os.Args)
 }
