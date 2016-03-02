@@ -7,6 +7,7 @@ import (
   "errors"
   "strings"
   "github.com/codegangsta/cli"
+  "github.com/mitchellh/go-homedir"
 )
 
 const (
@@ -52,6 +53,11 @@ func makeApp() *cli.App {
       Value: defaultLicense,
       Usage: "This flag specifies the choose license to print.\n\t" + strings.Join(choose_license, "\n\t"),
     },
+    cli.StringFlag {
+      Name:  "template, t",
+      Value: "",
+      Usage: "Input the name of the file except for the extension.",
+    },
   }
 
   app.Action = func(c *cli.Context) {
@@ -65,7 +71,8 @@ func makeApp() *cli.App {
     // Flag author
     author := flagAuthor(c.String("author"))
 
-    readme_template := createReadTemplate(license, author)
+    // Flag template
+    readme_template := flagTemplate(c.String("template"), license, author)
 
     file, err := os.OpenFile("README.md", os.O_WRONLY|os.O_APPEND, 0600)
     if err != nil {
@@ -116,6 +123,58 @@ func flagAuthor(author string) string {
   return fmt.Sprintf("[%s](https://github.com/%s)", author, author)
 }
 
+// it's so foolish code.
+// Need Refactoring.
+func flagTemplate(template, license, author string) []byte {
+  if template == "" {
+    user_home, err := homedir.Dir()
+    if err != nil {
+      return []byte("")
+    }
+    if FileExists(user_home + "/.torisetsu/default.md") {
+      template_content, err := readTemplate("default", license, author)
+      if err != nil {
+        return []byte("")
+      }
+      return template_content
+    } else {
+      template_content := createReadTemplate(license, author)
+      return template_content
+    }
+  } else {
+    template_content, err := readTemplate(template, license, author)
+    if err != nil {
+      return []byte("")
+    }
+    return template_content
+  }
+}
+
+func readTemplate(template_name, license, author string) ([]byte, error) {
+  user_home, err := homedir.Dir()
+  f, err := os.Open(user_home + "/.torisetsu/" + template_name + ".md")
+  if err != nil {
+    return []byte(""), err
+  }
+  template_content := make([]string, 0)
+  s := bufio.NewScanner(f)
+  for s.Scan() {
+    insert_text := s.Text()
+    if insert_text == "torisetsu.license" {
+      insert_text = license
+    } else if insert_text == "torisetsu.author" {
+      insert_text = author
+    }
+
+    template_content = append(template_content, insert_text)
+  }
+  if s.Err() != nil {
+    return []byte(""), err
+  }
+
+  return []byte(strings.Join(template_content, "\n")), nil
+}
+
 func createReadTemplate(license, author string) []byte {
   body := []string{
     "Overview",
@@ -133,6 +192,12 @@ func createReadTemplate(license, author string) []byte {
   }
 
   return []byte("\n" + strings.Join(body, "\n\n"))
+}
+
+
+func FileExists(filename string) bool {
+  _, err := os.Stat(filename)
+  return err == nil
 }
 
 func main() {
