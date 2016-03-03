@@ -1,6 +1,8 @@
 # Torisetsu（取説）
 torisetsu - Add README.md Template.
 
+[Wiki](https://github.com/syossan27/torisetsu/wiki)
+
 ## Requirement
 Golang
 
