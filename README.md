@@ -95,6 +95,11 @@ GLOBAL OPTIONS:
 
 [Template Option - wiki](https://github.com/syossan27/torisetsu/wiki/template)
 
+## Contributing
+
+You're most welcomed!💓
+Welcome pull request and issues.✨
+
 ## License
 
 [MIT](https://github.com/tcnksm/tool/blob/master/LICENCE)
