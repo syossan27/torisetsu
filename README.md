@@ -7,6 +7,7 @@ torisetsu - Add README.md Template.
 Golang
 urfave/cli
 mitchellh/go-homedir
+Masterminds/glide
 
 ## Install
 ````
