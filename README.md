@@ -5,6 +5,8 @@ torisetsu - Add README.md Template.
 
 ## Requirement
 Golang
+urfave/cli
+mitchellh/go-homedir
 
 ## Install
 ````
