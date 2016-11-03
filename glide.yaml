@@ -1,4 +1,4 @@
 package: torisetsu
 import:
-- package: github.com/codegangsta/cli
+- package: github.com/urfave/cli
 - package: github.com/mitchellh/go-homedir
