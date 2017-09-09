@@ -39,7 +39,7 @@ func compareTestData(license, author, comparison_license, comparison_author stri
 }
 
 func TestRun_noFlag(t *testing.T) {
-	license := flagLicense(default_license)
+	license, _ := flagLicense(default_license)
 	author := flagAuthor(default_author)
 	comparison_license := default_comparison_license
 	comparison_author := default_comparison_author
@@ -52,7 +52,7 @@ func TestRun_noFlag(t *testing.T) {
 }
 
 func TestRun_licenseFlag(t *testing.T) {
-	license := flagLicense("unlicense")
+	license, _ := flagLicense("unlicense")
 	author := flagAuthor(default_author)
 	comparison_license := "[The Unlicense](http://unlicense.org/)"
 	comparison_author := default_comparison_author
@@ -65,7 +65,7 @@ func TestRun_licenseFlag(t *testing.T) {
 }
 
 func TestRun_authorFlag(t *testing.T) {
-	license := flagLicense(default_license)
+	license, _ := flagLicense(default_license)
 	author := flagAuthor("syossan27")
 	comparison_license := default_comparison_license
 	comparison_author := "[syossan27](https://github.com/syossan27)"
