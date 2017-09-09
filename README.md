@@ -3,12 +3,6 @@ torisetsu - Add README.md Template.
 
 [Wiki](https://github.com/syossan27/torisetsu/wiki)
 
-## Requirement
-Golang
-urfave/cli
-mitchellh/go-homedir
-Masterminds/glide
-
 ## Install
 ````
 $ go get github.com/syossan27/torisetsu
