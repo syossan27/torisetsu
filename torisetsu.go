@@ -72,7 +72,11 @@ func makeApp() *cli.App {
 		author := flagAuthor(c.String("author"))
 
 		// Flag template
-		readme_template := flagTemplate(c.String("template"), license, author)
+		readme_template, err := flagTemplate(c.String("template"), license, author)
+		if err != nil {
+			fmt.Println("Error: ", err)
+			os.Exit(ExitCodeError)
+		}
 
 		file, err := os.OpenFile("README.md", os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
@@ -125,28 +129,28 @@ func flagAuthor(author string) string {
 
 // it's so foolish code.
 // Need Refactoring.
-func flagTemplate(template, license, author string) []byte {
+func flagTemplate(template, license, author string) ([]byte, error) {
 	if template == "" {
 		user_home, err := homedir.Dir()
 		if err != nil {
-			return []byte("")
+			return nil, err
 		}
 		if FileExists(user_home + "/.torisetsu/default.md") {
 			template_content, err := readTemplate("default", license, author)
 			if err != nil {
-				return []byte("")
+				return nil, err
 			}
-			return template_content
+			return template_content, nil
 		} else {
 			template_content := createReadTemplate(license, author)
-			return template_content
+			return template_content, nil
 		}
 	} else {
 		template_content, err := readTemplate(template, license, author)
 		if err != nil {
-			return []byte("")
+			return nil, err
 		}
-		return template_content
+		return template_content, nil
 	}
 }
 
