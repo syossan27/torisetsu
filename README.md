@@ -99,7 +99,7 @@ Welcome pull request and issues.✨
 
 ## License
 
-[MIT](https://github.com/tcnksm/tool/blob/master/LICENCE)
+[MIT](https://github.com/syossan27/torisetsu/blob/master/LICENSE)
 
 ## Author
 
