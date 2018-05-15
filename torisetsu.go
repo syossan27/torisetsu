@@ -8,6 +8,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"os"
 	"strings"
+	"torisetsu/foundation"
 )
 
 const (
@@ -16,13 +17,28 @@ const (
 	defaultLicense = "mit"
 )
 
-func makeApp() *cli.App {
-	app := cli.NewApp()
-	app.Name = "torisetsu"
-	app.Usage = "Write README.md Template"
-	app.Version = "1.1"
+var (
+	homeDir string
+	configDir string
+	flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "license, l",
+			Value: defaultLicense,
+			Usage: "This flag specifies the choose license to print.\n\t" + strings.Join(chooseLicenceStrings, "\n\t"),
+		},
+		cli.StringFlag{
+			Name:  "author, a",
+			Value: "",
+			Usage: "This flag specifies the author name to print.",
+		},
+		cli.StringFlag{
+			Name:  "template, t",
+			Value: "",
+			Usage: "Input the name of the file except for the extension.",
+		},
+	}
 
-	choose_license := []string{
+	chooseLicenceStrings = []string{
 		"Choose License:",
 		"  none\t: None",
 		"  apache\t: Apache License 2.0",
@@ -42,62 +58,7 @@ func makeApp() *cli.App {
 		"  unlicense\t: The Unlicense",
 	}
 
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  "author, a",
-			Value: "",
-			Usage: "This flag specifies the author name to print.",
-		},
-		cli.StringFlag{
-			Name:  "license, l",
-			Value: defaultLicense,
-			Usage: "This flag specifies the choose license to print.\n\t" + strings.Join(choose_license, "\n\t"),
-		},
-		cli.StringFlag{
-			Name:  "template, t",
-			Value: "",
-			Usage: "Input the name of the file except for the extension.",
-		},
-	}
-
-	app.Action = func(c *cli.Context) {
-		// Flag license
-		license, err := flagLicense(c.String("license"))
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(ExitCodeError)
-		}
-
-		// Flag author
-		author := flagAuthor(c.String("author"))
-
-		// Flag template
-		readme_template, err := flagTemplate(c.String("template"), license, author)
-		if err != nil {
-			fmt.Println("Error: ", err)
-			os.Exit(ExitCodeError)
-		}
-
-		file, err := os.OpenFile("README.md", os.O_WRONLY|os.O_APPEND, 0600)
-		if err != nil {
-			println("Error: README.md is not exist.")
-			os.Exit(ExitCodeError)
-		}
-		defer file.Close()
-
-		writer := bufio.NewWriter(file)
-		writer.Write(readme_template)
-		writer.Flush()
-
-		println("Complete add README.md!")
-		os.Exit(ExitCodeOK)
-	}
-
-	return app
-}
-
-func flagLicense(license string) (string, error) {
-	license_list := map[string]string{
+	licenseList = map[string]string{
 		"none":      "None",
 		"apache":    "[Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)",
 		"mit":       "[MIT](http://opensource.org/licenses/mit-license.php)",
@@ -115,11 +76,63 @@ func flagLicense(license string) (string, error) {
 		"mpl":       "[Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/)",
 		"unlicense": "[The Unlicense](http://unlicense.org/)",
 	}
+)
 
-	if license_string, ok := license_list[license]; ok {
-		return license_string, nil
+func makeApp() *cli.App {
+	app := cli.NewApp()
+	app.Name = "torisetsu"
+	app.Usage = "Write README.md Template"
+	app.Version = "1.1"
+	app.Flags = flags
+	app.Action = action
+	return app
+}
+
+func action(c *cli.Context) {
+	file, err := os.OpenFile("README.md", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
+	if err != nil {
+		foundation.PrintError("README.md is not exist")
+		os.Exit(ExitCodeError)
+	}
+	defer file.Close()
+
+	homeDir, err = homedir.Dir()
+	if err != nil {
+		foundation.PrintError("Failed fetch homeDir: " + err.Error())
+		os.Exit(ExitCodeError)
+	}
+	configDir = homeDir + "/.torisetsu"
+
+	// Flag license
+	license, err := flagLicense(c.String("license"))
+	if err != nil {
+		foundation.PrintError("Failed fetch license: " + err.Error())
+		os.Exit(ExitCodeError)
+	}
+
+	// Flag author
+	author := flagAuthor(c.String("author"))
+
+	// Flag template
+	template, err := flagTemplate(c.String("template"), license, author)
+	if err != nil {
+		foundation.PrintError("Failed fetch template: " + err.Error())
+		os.Exit(ExitCodeError)
+	}
+
+	writer := bufio.NewWriter(file)
+	writer.Write(template)
+	writer.Flush()
+
+	foundation.PrintSuccess("Complete add README.md!")
+	os.Exit(ExitCodeOK)
+}
+
+func flagLicense(licenseName string) (string, error) {
+	if license, ok := licenseList[licenseName]; ok {
+		return license, nil
 	} else {
-		return "", errors.New("The selected license can not be used.")
+		return "", errors.New("selected license can not be used")
 	}
 }
 
@@ -131,52 +144,47 @@ func flagAuthor(author string) string {
 // Need Refactoring.
 func flagTemplate(template, license, author string) ([]byte, error) {
 	if template == "" {
-		user_home, err := homedir.Dir()
-		if err != nil {
-			return nil, err
-		}
-		if FileExists(user_home + "/.torisetsu/default.md") {
-			template_content, err := readTemplate("default", license, author)
+		if FileExists(configDir + "/default.md") {
+			templateCotent, err := readTemplate("default", license, author)
 			if err != nil {
 				return nil, err
 			}
-			return template_content, nil
+			return templateCotent, nil
 		} else {
-			template_content := createReadTemplate(license, author)
-			return template_content, nil
+			templateContent := createReadTemplate(license, author)
+			return templateContent, nil
 		}
 	} else {
-		template_content, err := readTemplate(template, license, author)
+		templateContent, err := readTemplate(template, license, author)
 		if err != nil {
 			return nil, err
 		}
-		return template_content, nil
+		return templateContent, nil
 	}
 }
 
-func readTemplate(template_name, license, author string) ([]byte, error) {
-	user_home, err := homedir.Dir()
-	f, err := os.Open(user_home + "/.torisetsu/" + template_name + ".md")
+func readTemplate(templateName, license, author string) ([]byte, error) {
+	f, err := os.Open(configDir + "/" + templateName + ".md")
 	if err != nil {
 		return []byte(""), err
 	}
-	template_content := make([]string, 0)
+	templateContent := make([]string, 0)
 	s := bufio.NewScanner(f)
 	for s.Scan() {
-		insert_text := s.Text()
-		if insert_text == "torisetsu.license" {
-			insert_text = license
-		} else if insert_text == "torisetsu.author" {
-			insert_text = author
+		insertText := s.Text()
+		if insertText == "torisetsu.license" {
+			insertText = license
+		} else if insertText == "torisetsu.author" {
+			insertText = author
 		}
 
-		template_content = append(template_content, insert_text)
+		templateContent = append(templateContent, insertText)
 	}
 	if s.Err() != nil {
 		return []byte(""), err
 	}
 
-	return []byte(strings.Join(template_content, "\n")), nil
+	return []byte(strings.Join(templateContent, "\n")), nil
 }
 
 func createReadTemplate(license, author string) []byte {
